@@ -3,6 +3,8 @@ package com.event.ticketing.eventticketingsystem.model;
 import jakarta.persistence.*;
 import java.util.Set;
 import java.util.HashSet;
+import java.util.List;
+import java.util.ArrayList;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -51,4 +53,12 @@ public class User {
         orphanRemoval = true
     )
     private Set<Event> events = new HashSet<>();
+
+    @Builder.Default
+    @OneToMany(
+        mappedBy = "user",
+        cascade = CascadeType.ALL,
+        orphanRemoval = true
+    )
+    private List<Order> orders = new ArrayList<>();
 }
