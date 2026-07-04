@@ -1,0 +1,5 @@
+package com.event.ticketing.event_ticketing_system.model;
+
+public class User {
+
+}
