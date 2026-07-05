@@ -1,6 +1,8 @@
 package com.event.ticketing.eventticketingsystem.service;
 
 import com.event.ticketing.eventticketingsystem.dto.CreateEventRequest;
+import com.event.ticketing.eventticketingsystem.dto.EventDetailDto;
+import com.event.ticketing.eventticketingsystem.dto.OrganizerDto;
 import com.event.ticketing.eventticketingsystem.dto.UpdateEventRequest;
 import com.event.ticketing.eventticketingsystem.model.Event;
 import com.event.ticketing.eventticketingsystem.model.User;
@@ -9,15 +11,18 @@ import com.event.ticketing.eventticketingsystem.repository.UserRepository;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 
+import java.time.LocalDate;
 import java.util.List;
 
-import org.springframework.security.access.AccessDeniedException;
-import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.security.core.userdetails.UserDetails;
-import org.springframework.stereotype.Service;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.stereotype.Service;
 
 @Service
 @RequiredArgsConstructor
@@ -59,12 +64,20 @@ public class EventService {
         return eventRepository.save(event);
     }
 
-    public Event getEventById(Long eventId) {
+    public EventDetailDto getEventById(Long eventId) {
+
+        Event event = getEventEntityById(eventId);
+
+        return mapToEventDetailDto(event);
+    }
+
+    private Event getEventEntityById(Long eventId) {
 
         return eventRepository.findById(eventId)
                 .orElseThrow(
                         () -> new EntityNotFoundException(
-                                "Event not found with ID: " + eventId
+                                "Event not found with ID: "
+                                        + eventId
                         )
                 );
     }
@@ -75,7 +88,7 @@ public class EventService {
     ) {
 
         Event existingEvent =
-                getEventById(eventId);
+                getEventEntityById(eventId);
 
         String currentUserEmail =
                 SecurityContextHolder
@@ -120,7 +133,7 @@ public class EventService {
 
         return eventRepository.save(existingEvent);
     }
-    
+
     public List<Event> getEventsByOrganizer() {
 
         String currentUsername =
@@ -142,10 +155,11 @@ public class EventService {
                 organizer
         );
     }
+
     public void deleteEvent(Long eventId) {
 
         Event event =
-                getEventById(eventId);
+                getEventEntityById(eventId);
 
         Authentication authentication =
                 SecurityContextHolder
@@ -176,5 +190,87 @@ public class EventService {
         }
 
         eventRepository.delete(event);
+    }
+
+    public Page<EventDetailDto> getAllEvents(
+            Pageable pageable,
+            String title,
+            String location,
+            LocalDate date
+    ) {
+
+        Specification<Event> spec =
+                (root, query, cb) -> cb.conjunction();
+
+        if (title != null && !title.isBlank()) {
+
+            spec = spec.and(
+                    (root, query, cb) ->
+                            cb.like(
+                                    cb.lower(
+                                            root.get("title")
+                                    ),
+                                    "%" + title.toLowerCase() + "%"
+                            )
+            );
+        }
+
+        if (location != null && !location.isBlank()) {
+
+            spec = spec.and(
+                    (root, query, cb) ->
+                            cb.like(
+                                    cb.lower(
+                                            root.get("location")
+                                    ),
+                                    "%" + location.toLowerCase() + "%"
+                            )
+            );
+        }
+
+        if (date != null) {
+
+            spec = spec.and(
+                    (root, query, cb) ->
+                            cb.greaterThanOrEqualTo(
+                                    root.get("date"),
+                                    date.atStartOfDay()
+                            )
+            );
+        }
+
+        Page<Event> eventPage =
+                eventRepository.findAll(
+                        spec,
+                        pageable
+                );
+
+        return eventPage.map(
+                this::mapToEventDetailDto
+        );
+    }
+
+    private EventDetailDto mapToEventDetailDto(
+            Event event
+    ) {
+
+        OrganizerDto organizerDto =
+                OrganizerDto.builder()
+                        .id(event.getOrganizer().getId())
+                        .name(event.getOrganizer().getName())
+                        .build();
+
+        return EventDetailDto.builder()
+                .id(event.getId())
+                .title(event.getTitle())
+                .description(event.getDescription())
+                .date(event.getDate())
+                .location(event.getLocation())
+                .ticketPrice(event.getTicketPrice())
+                .totalTicketsAvailable(
+                        event.getTotalTicketsAvailable()
+                )
+                .organizer(organizerDto)
+                .build();
     }
 }
