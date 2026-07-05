@@ -1,0 +1,117 @@
+package com.event.ticketing.eventticketingsystem.service;
+
+import com.event.ticketing.eventticketingsystem.dto.CreateEventRequest;
+import com.event.ticketing.eventticketingsystem.dto.UpdateEventRequest;
+import com.event.ticketing.eventticketingsystem.model.Event;
+import com.event.ticketing.eventticketingsystem.model.User;
+import com.event.ticketing.eventticketingsystem.repository.EventRepository;
+import com.event.ticketing.eventticketingsystem.repository.UserRepository;
+import jakarta.persistence.EntityNotFoundException;
+import lombok.RequiredArgsConstructor;
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.stereotype.Service;
+
+@Service
+@RequiredArgsConstructor
+public class EventService {
+
+    private final EventRepository eventRepository;
+    private final UserRepository userRepository;
+
+    public Event createEvent(CreateEventRequest request) {
+
+        UserDetails userDetails =
+                (UserDetails) SecurityContextHolder
+                        .getContext()
+                        .getAuthentication()
+                        .getPrincipal();
+
+        String email = userDetails.getUsername();
+
+        User organizer = userRepository
+                .findByEmail(email)
+                .orElseThrow(
+                        () -> new IllegalStateException(
+                                "User not found"
+                        )
+                );
+
+        Event event = Event.builder()
+                .title(request.getTitle())
+                .description(request.getDescription())
+                .date(request.getDate())
+                .location(request.getLocation())
+                .ticketPrice(request.getTicketPrice())
+                .totalTicketsAvailable(
+                        request.getTotalTicketsAvailable()
+                )
+                .organizer(organizer)
+                .build();
+
+        return eventRepository.save(event);
+    }
+
+    public Event getEventById(Long eventId) {
+
+        return eventRepository.findById(eventId)
+                .orElseThrow(
+                        () -> new EntityNotFoundException(
+                                "Event not found with ID: " + eventId
+                        )
+                );
+    }
+
+    public Event updateEvent(
+            Long eventId,
+            UpdateEventRequest request
+    ) {
+
+        Event existingEvent =
+                getEventById(eventId);
+
+        String currentUserEmail =
+                SecurityContextHolder
+                        .getContext()
+                        .getAuthentication()
+                        .getName();
+
+        String ownerEmail =
+                existingEvent
+                        .getOrganizer()
+                        .getEmail();
+
+        if (!currentUserEmail.equals(ownerEmail)) {
+            throw new AccessDeniedException(
+                    "You are not the owner of this event"
+            );
+        }
+
+        existingEvent.setTitle(
+                request.getTitle()
+        );
+
+        existingEvent.setDescription(
+                request.getDescription()
+        );
+
+        existingEvent.setDate(
+                request.getDate()
+        );
+
+        existingEvent.setLocation(
+                request.getLocation()
+        );
+
+        existingEvent.setTicketPrice(
+                request.getTicketPrice()
+        );
+
+        existingEvent.setTotalTicketsAvailable(
+                request.getTotalTicketsAvailable()
+        );
+
+        return eventRepository.save(existingEvent);
+    }
+}

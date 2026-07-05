@@ -1,0 +1,52 @@
+package com.event.ticketing.eventticketingsystem.service;
+
+import com.event.ticketing.eventticketingsystem.dto.CreateEventRequest;
+import com.event.ticketing.eventticketingsystem.model.Event;
+import com.event.ticketing.eventticketingsystem.model.User;
+import com.event.ticketing.eventticketingsystem.repository.EventRepository;
+import com.event.ticketing.eventticketingsystem.repository.UserRepository;
+import lombok.RequiredArgsConstructor;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.stereotype.Service;
+
+@Service
+@RequiredArgsConstructor
+public class EventService {
+
+    private final EventRepository eventRepository;
+    private final UserRepository userRepository;
+
+    public Event createEvent(CreateEventRequest request) {
+
+        UserDetails userDetails =
+                (UserDetails) SecurityContextHolder
+                        .getContext()
+                        .getAuthentication()
+                        .getPrincipal();
+
+        String email = userDetails.getUsername();
+
+        User organizer = userRepository
+                .findByEmail(email)
+                .orElseThrow(
+                        () -> new IllegalStateException(
+                                "User not found"
+                        )
+                );
+
+        Event event = Event.builder()
+                .title(request.getTitle())
+                .description(request.getDescription())
+                .date(request.getDate())
+                .location(request.getLocation())
+                .ticketPrice(request.getTicketPrice())
+                .totalTicketsAvailable(
+                        request.getTotalTicketsAvailable()
+                )
+                .organizer(organizer)
+                .build();
+
+        return eventRepository.save(event);
+    }
+}
