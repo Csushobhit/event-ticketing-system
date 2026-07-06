@@ -1,0 +1,46 @@
+# Application secrets
+src/main/resources/application.properties
+
+# Environment files
+.env
+.env.*
+
+# Maven
+target/
+
+# IntelliJ IDEA
+.idea/
+*.iml
+
+# VS Code
+.vscode/
+
+# Logs
+*.log
+
+# OS files
+.DS_Store
+Thumbs.db
+
+
+# Spring Boot config
+event-ticketing-system/src/main/resources/application.properties
+event-ticketing-system/bin/src/main/resources/application.properties
+
+# Build output
+bin/
+target/
+
+
+# Eclipse
+.metadata/
+.project
+.classpath
+.settings/
+
+# Build
+target/
+bin/
+
+# Secrets
+**/application.properties

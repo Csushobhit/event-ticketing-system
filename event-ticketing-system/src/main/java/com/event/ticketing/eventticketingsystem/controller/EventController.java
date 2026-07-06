@@ -12,7 +12,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
-
+import com.event.ticketing.eventticketingsystem.dto.EventDetailDto;
 import java.net.URI;
 import java.time.LocalDate;
 
@@ -45,11 +45,12 @@ public class EventController {
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<Event> getEventById(
+    public ResponseEntity<EventDetailDto> getEventById(
             @PathVariable Long id
-    ) {
+    )
+    {
 
-        Event event =
+        EventDetailDto event =
                 eventService.getEventById(id);
 
         return ResponseEntity.ok(event);
@@ -85,7 +86,7 @@ public class EventController {
     }
 
     @GetMapping
-    public ResponseEntity<Page<Event>> getAllEvents(
+    public ResponseEntity<Page<EventDetailDto>> getAllEvents(
 
             Pageable pageable,
 
@@ -102,14 +103,18 @@ public class EventController {
             LocalDate date
     ) {
 
-        Page<Event> eventsPage =
-                eventService.getAllEvents(
-                        pageable,
-                        title,
-                        location,
-                        date
-                );
+    	Page<EventDetailDto> eventsPage =
+    	        eventService.getAllEvents(
+    	                pageable,
+    	                title,
+    	                location,
+    	                date
+    	        );
 
         return ResponseEntity.ok(eventsPage);
+    }
+    @GetMapping("/test")
+    public String test() {
+        return "working";
     }
 }
