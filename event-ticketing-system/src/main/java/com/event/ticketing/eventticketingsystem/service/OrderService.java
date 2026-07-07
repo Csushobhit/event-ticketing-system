@@ -43,6 +43,8 @@ public class OrderService {
     private final UserRepository userRepository;
     private final OrderRepository orderRepository;
     private final TicketRepository ticketRepository;
+    private final PdfGenerationService pdfGenerationService;
+    private final EmailService emailService;
 
     @Value("${stripe.webhook.secret}")
     private String webhookSecret;
@@ -371,5 +373,58 @@ public class OrderService {
                 event.getId(),
                 event.getTicketsSold()
         );
+        try {
+
+            Ticket firstTicket =
+                    tickets.iterator().next();
+
+            byte[] pdfBytes =
+                    pdfGenerationService.generateTicketPdf(
+                            firstTicket
+                    );
+
+            String subject =
+                    "Your Ticket for: "
+                            + event.getTitle();
+
+            String body =
+                    "<h2>Thank you for your purchase!</h2>"
+                    + "<p>Hello "
+                    + user.getName()
+                    + ",</p>"
+                    + "<p>Your ticket for <strong>"
+                    + event.getTitle()
+                    + "</strong> is attached.</p>"
+                    + "<p>Order ID: "
+                    + savedOrder.getId()
+                    + "</p>";
+
+            String attachmentName =
+                    "ticket-"
+                    + firstTicket.getUniqueCode()
+                    + ".pdf";
+
+            emailService.sendEmailWithAttachment(
+                    user.getEmail(),
+                    subject,
+                    body,
+                    pdfBytes,
+                    attachmentName
+            );
+
+            log.info(
+                    "Ticket email dispatched for Order {}",
+                    savedOrder.getId()
+            );
+
+        } catch (Exception e) {
+
+            log.error(
+                    "Failed to generate/send ticket email for Order {}",
+                    savedOrder.getId(),
+                    e
+            );
+
+        }
     }
 }
