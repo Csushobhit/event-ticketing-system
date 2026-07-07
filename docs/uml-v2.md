@@ -1,3 +1,5 @@
+
+```mermaid
 classDiagram
 
 class User {
@@ -58,3 +60,4 @@ User "1" --> "*" Order : places
 Order "1" --> "*" Ticket : contains
 Event "1" --> "*" Ticket : issues
 User "1" --> "*" Role : has
+```

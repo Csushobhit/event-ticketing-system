@@ -1,3 +1,4 @@
+```mermaid
 erDiagram
 
     USERS {
@@ -45,3 +46,4 @@ erDiagram
     ORDERS ||--o{ TICKETS : contains
     EVENTS ||--o{ TICKETS : issues
     USERS ||--o{ USER_ROLES : has
+```
