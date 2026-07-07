@@ -2,6 +2,8 @@
 <section name="Workbench">
 	<section name="java.lang.Class">
 		<list key="findhistory">
+			<item value="log.info("/>
+			<item value="log.info(&#x0A;"/>
 			<item value="getE"/>
 		</list>
 	</section>
