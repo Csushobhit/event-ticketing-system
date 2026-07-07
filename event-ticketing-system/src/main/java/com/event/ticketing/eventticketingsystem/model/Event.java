@@ -47,6 +47,10 @@ public class Event {
     @Column(name = "total_tickets_available", nullable = false)
     private Integer totalTicketsAvailable;
 
+    @Builder.Default
+    @Column(name = "tickets_sold", nullable = false)
+    private Integer ticketsSold = 0;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "organizer_id", nullable = false)
     private User organizer;

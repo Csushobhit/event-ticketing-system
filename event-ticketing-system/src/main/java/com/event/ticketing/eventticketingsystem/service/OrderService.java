@@ -9,6 +9,7 @@ import com.event.ticketing.eventticketingsystem.repository.EventRepository;
 import com.event.ticketing.eventticketingsystem.repository.OrderRepository;
 import com.event.ticketing.eventticketingsystem.repository.TicketRepository;
 import com.event.ticketing.eventticketingsystem.repository.UserRepository;
+import com.event.ticketing.eventticketingsystem.exception.InsufficientTicketsException;
 
 import com.stripe.exception.SignatureVerificationException;
 import com.stripe.exception.StripeException;
@@ -46,6 +47,8 @@ public class OrderService {
     @Value("${stripe.webhook.secret}")
     private String webhookSecret;
 
+    
+    @Transactional
     public String createPaymentIntent(
             CheckoutRequest request
     ) throws StripeException {
@@ -66,7 +69,7 @@ public class OrderService {
                         );
 
         Event event =
-                eventRepository.findById(
+                eventRepository.findAndLockById(
                         request.getEventId()
                 )
                 .orElseThrow(
@@ -75,6 +78,22 @@ public class OrderService {
                                         + request.getEventId()
                         )
                 );
+
+        int ticketsAvailable =
+                event.getTotalTicketsAvailable()
+                        - event.getTicketsSold();
+
+        if (ticketsAvailable < request.getTicketQuantity()) {
+
+            throw new InsufficientTicketsException(
+                    "Not enough tickets available for event: "
+                            + event.getTitle()
+                            + ". Requested: "
+                            + request.getTicketQuantity()
+                            + ", Available: "
+                            + ticketsAvailable
+            );
+        }
 
         BigDecimal totalAmount =
                 event.getTicketPrice()
@@ -127,7 +146,6 @@ public class OrderService {
 
         return paymentIntent.getClientSecret();
     }
-
     public void handleStripeEvent(
             String payload,
             String sigHeader
@@ -226,6 +244,7 @@ public class OrderService {
         }
     }
 
+
     @Transactional
     public void fulfillOrder(
             PaymentIntent paymentIntent
@@ -266,19 +285,42 @@ public class OrderService {
                                 .get("ticketQuantity")
                 );
 
+        Event event =
+                eventRepository
+                        .findAndLockById(eventId)
+                        .orElseThrow(
+                                () -> new EntityNotFoundException(
+                                        "Event not found"
+                                )
+                        );
+
+        int ticketsAvailable =
+                event.getTotalTicketsAvailable()
+                        - event.getTicketsSold();
+
+        if (ticketsAvailable < ticketQuantity) {
+
+            log.error(
+                    "Oversell attempt detected for Event {}",
+                    event.getId()
+            );
+
+            throw new InsufficientTicketsException(
+                    "Oversell detected during order fulfillment."
+            );
+        }
+
+        event.setTicketsSold(
+                event.getTicketsSold() + ticketQuantity
+        );
+
+        eventRepository.save(event);
+
         User user =
                 userRepository.findById(userId)
                         .orElseThrow(
                                 () -> new EntityNotFoundException(
                                         "User not found"
-                                )
-                        );
-
-        Event event =
-                eventRepository.findById(eventId)
-                        .orElseThrow(
-                                () -> new EntityNotFoundException(
-                                        "Event not found"
                                 )
                         );
 
@@ -323,9 +365,11 @@ public class OrderService {
         ticketRepository.saveAll(tickets);
 
         log.info(
-                "Successfully fulfilled order {} with {} tickets",
+                "Successfully fulfilled order {} with {} tickets. Event {} has {} tickets sold.",
                 savedOrder.getId(),
-                ticketQuantity
+                ticketQuantity,
+                event.getId(),
+                event.getTicketsSold()
         );
     }
 }
